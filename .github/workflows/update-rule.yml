@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 * * * *'   # 每小时运行一次
   workflow_dispatch:
 
 jobs:
@@ -13,6 +13,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: 读取本地缓存 SHA
+        id: load_hash
+        run: |
+          if [ -f scripts/.last_hash ]; then
+            echo "last_sha=$(cat scripts/.last_hash)" >> $GITHUB_OUTPUT
+          else
+            echo "last_sha=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 检查上游最新提交 SHA
+        id: check_upstream
+        run: |
+          echo "🔍 正在检查上游是否更新..."
+          LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
+          echo "latest_sha=${LATEST_SHA}" >> $GITHUB_OUTPUT
+
+          if [ "${{ steps.load_hash.outputs.last_sha }}" = "$LATEST_SHA" ]; then
+            echo "🟢 上游未更新，终止工作流。"
+            exit 0
+          fi
+
       - name: 检出代码
         uses: actions/checkout@v4
 
@@ -34,7 +55,7 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-          fi  # 闭合 if 语句
+          fi
 
       - name: 提交变更
         if: steps.check_changes.outputs.changed == 'true'
