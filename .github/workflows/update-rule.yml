@@ -31,6 +31,7 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
+          fi  # 补充闭合 if 语句
 
       - name: Commit changes
         if: steps.check_changes.outputs.changed == 'true'
