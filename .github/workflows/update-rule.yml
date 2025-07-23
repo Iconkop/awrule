@@ -1,4 +1,7 @@
-name: Auto Update and Release Ad Rules
+name: 自动更新和发布广告规则
+
+permissions:
+  contents: write
 
 on:
   schedule:
@@ -10,30 +13,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 配置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 安装依赖包
         run: pip install requests
 
-      - name: Run convert script
+      - name: 运行转换脚本
         run: python scripts/convert_rule.py
 
-      - name: Check for changes
+      - name: 检查是否有变更
         id: check_changes
         run: |
           if git diff --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-          fi  # 补充闭合 if 语句
+          fi  # 闭合 if 语句
 
-      - name: Commit changes
+      - name: 提交变更
         if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -42,11 +45,11 @@ jobs:
           git commit -m "🔄 自动更新规则"
           git push
 
-      - name: Generate tag
+      - name: 生成标签
         id: tag
         run: echo "tag=v$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
-      - name: Create Release
+      - name: 创建发布
         if: steps.check_changes.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
