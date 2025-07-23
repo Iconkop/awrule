@@ -1,3 +1,14 @@
+#Title: AWAvenue Ads Rule
+#--------------------------------------
+#Total lines: 859
+#Version: 1.6.8-release
+#Update time: 2025-07-23 19:37:23 UTC+8
+#Update content: Block 360's intrusive shopping ads.
+
+#Homepage: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
+#License: https://github.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/LICENSE
+
+
 DOMAIN,1500020991.vodplayer.wxamedia.com
 DOMAIN,1500022744.vodplayer.wxamedia.com
 DOMAIN,1500026601.vodplayer.wxamedia.com
@@ -403,6 +414,7 @@ DOMAIN,imdns.hpplay.cn
 DOMAIN,img-c.heytapimage.com
 DOMAIN,img-x.jd.com
 DOMAIN,img.adnyg.com.w.kunlungr.com
+DOMAIN,img2.360buyimg.com
 DOMAIN,impression-asia.chinaliftoff.io
 DOMAIN,impression-asia.liftoff.io
 DOMAIN,impression.appsflyer.com
