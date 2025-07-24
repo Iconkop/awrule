@@ -1,3 +1,8 @@
+# This file was auto-converted from Clash Classical YAML format.
+# Repository: https://github.com/Iconkop/awrule
+# Branch: main
+# Converted at: 2025-07-24 05:23:08 UTC+8
+
 #Title: AWAvenue Ads Rule
 #--------------------------------------
 #Total lines: 859
@@ -7,7 +12,6 @@
 
 #Homepage: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
 #License: https://github.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/LICENSE
-
 
 DOMAIN,1500020991.vodplayer.wxamedia.com
 DOMAIN,1500022744.vodplayer.wxamedia.com
