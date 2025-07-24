@@ -95,20 +95,16 @@ jobs:
           RAW_URL="https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list"
           TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')
 
-          MESSAGE=$(cat <<EOF
-🚀 <b>AWAvenue 规则自动同步通知</b>
-
-✅ 状态：发布成功
-📦 仓库：<a href="https://github.com/Iconkop/awrule">GitHub Repo</a>
-📄 规则文件：<a href="${RAW_URL}">点此查看</a>
-🕒 时间：${TIMESTAMP}
-⚙️ 触发方式：${{ github.event_name }}
-EOF
-)
+          MESSAGE="🚀 <b>AWAvenue 规则自动同步通知</b>%0A%0A"
+          MESSAGE+="✅ 状态：发布成功%0A"
+          MESSAGE+="📦 仓库：<a href=\"https://github.com/Iconkop/awrule\">GitHub Repo</a>%0A"
+          MESSAGE+="📄 规则文件：<a href=\"${RAW_URL}\">点此查看</a>%0A"
+          MESSAGE+="🕒 时间：${TIMESTAMP}%0A"
+          MESSAGE+="⚙️ 触发方式：${{ github.event_name }}"
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="$MESSAGE" \
+            -d text="${MESSAGE}" \
             -d parse_mode="HTML"
 
       - name: 发送 Telegram 文件通知
