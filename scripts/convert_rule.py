@@ -2,10 +2,18 @@ import requests
 import hashlib
 import os
 import sys
+from datetime import datetime
 
+# 原始规则地址（仍然拉取的是 TG-Twilight 仓库）
 RAW_URL = "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml"
+
+# 输出文件及缓存哈希
 OUTPUT_FILE = "AWAvenue-Ads-Rule-Clash-Classical.list"
 HASH_FILE = "scripts/.last_hash"
+
+# 你自己的仓库信息
+REPO_URL = "https://github.com/Iconkop/awrule"
+REPO_BRANCH = "main"
 
 def get_remote_file(url):
     try:
@@ -26,31 +34,44 @@ def load_last_hash():
     return ""
 
 def save_hash(hash_val):
+    os.makedirs(os.path.dirname(HASH_FILE), exist_ok=True)
     with open(HASH_FILE, "w", encoding="utf-8") as f:
         f.write(hash_val)
 
+def get_now_string():
+    # 转换时间格式：2025-07-24 23:10:56 UTC+8
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC+8")
+
 def convert_yaml(raw_text):
     lines = raw_text.splitlines()
-    converted_lines = []
-    # 保留注释和规则之间空行（空行）
-    last_was_comment_or_empty = False
+    header_lines = []
+    rule_lines = []
+    in_payload = False
+
     for line in lines:
         stripped = line.strip()
-        if stripped == "payload:" or not stripped:
-            # 跳过"payload:"，保留空行
-            if not stripped:
-                converted_lines.append("")
+        if stripped == "payload:":
+            in_payload = True
             continue
-        if stripped.startswith("#"):
-            converted_lines.append(line)
-            last_was_comment_or_empty = True
-            continue
-        if stripped.startswith("- "):
-            converted_lines.append(stripped[2:].strip())
-            last_was_comment_or_empty = False
-            continue
-        # 其他行按需处理，这里默认忽略
-    return "\n".join(converted_lines)
+        if not in_payload:
+            if stripped.startswith("Title:"):
+                line = "#" + line  # 补注释符
+            header_lines.append(line)
+        else:
+            if stripped.startswith("- "):
+                rule_lines.append(stripped[2:].strip())
+
+    # 顶部声明块：转换说明 + 仓库链接 + 时间
+    meta_block = [
+        "# This file was auto-converted from Clash Classical YAML format.",
+        f"# Repository: {REPO_URL}",
+        f"# Branch: {REPO_BRANCH}",
+        f"# Converted at: {get_now_string()}",
+        ""
+    ]
+
+    # 拼接完整内容（只保留一个空行）
+    return "\n".join(meta_block + header_lines).rstrip() + "\n\n" + "\n".join(rule_lines)
 
 def main():
     print("🛰️ 获取远程规则...")
@@ -65,6 +86,7 @@ def main():
     print("🔁 规则已更新，开始转换格式...")
     converted = convert_yaml(raw_text)
 
+    os.makedirs(os.path.dirname(OUTPUT_FILE) or ".", exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(converted)
 
