@@ -95,7 +95,7 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       RAW_URL: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Clash-Classical.list
     steps:
-      - name: 发送 Telegram 文本通知
+      - name: 发送 Telegram 文本通知（HTML 格式）
         run: |
           if [ "${{ needs.update.result }}" = "success" ]; then
             STATUS="✅ 发布成功"
@@ -103,12 +103,15 @@ jobs:
             STATUS="❌ 发布失败"
           fi
 
-          MESSAGE="📢 [AWAvenue 规则自动同步]\n\n${STATUS}\n\n🔗 仓库: https://github.com/${{ github.repository }}\n🔗 [点击这里查看完整规则文件](${RAW_URL})\n🕒 时间: $(date +'%Y-%m-%d %H:%M:%S')\n🔁 触发方式: ${{ github.event_name }}"
+          MESSAGE="📢 [AWAvenue 规则自动同步]<br><br>${STATUS}<br><br>🔗 仓库: https://github.com/${{ github.repository }}<br>🔗 <a href=\"${RAW_URL}\">点击这里查看完整规则文件</a><br>🕒 时间: $(date +'%Y-%m-%d %H:%M:%S')<br>🔁 触发方式: ${{ github.event_name }}"
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id=${TELEGRAM_CHAT_ID} \
             -d text="$MESSAGE" \
-            -d parse_mode="Markdown"
+            -d parse_mode="HTML"
+
+      - name: 确认文件存在
+        run: ls -l AWAvenue-Ads-Rule-Clash-Classical.list || echo "文件不存在"
 
       - name: 上传并发送规则文件
         run: |
