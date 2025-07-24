@@ -48,9 +48,8 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Force Update Flag (Manual Trigger)  # 手动运行时默认 updated=true
+      - name: Force Update Flag (Manual Trigger)  # 手动运行时强制 updated=true
         if: github.event_name == 'workflow_dispatch'
-        id: check_upstream
         run: echo "updated=true" >> $GITHUB_OUTPUT
 
       - name: Run Convert Script  # 运行转换脚本
