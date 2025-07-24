@@ -93,14 +93,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           RAW_URL="https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list"
-          STATUS="✅ 发布成功"
+          TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')
 
-          MESSAGE="🚀 AWAvenue 规则自动同步通知\n\n"
-          MESSAGE+="✅ 状态：${STATUS}\n"
-          MESSAGE+="📦 仓库：<a href=\"https://github.com/Iconkop/awrule\">GitHub Repo</a>\n"
-          MESSAGE+="📄 规则文件：<a href=\"${RAW_URL}\">点此查看</a>\n"
-          MESSAGE+="🕒 时间：$(date +'%Y-%m-%d %H:%M:%S')\n"
-          MESSAGE+="⚙️ 触发方式：${{ github.event_name }}"
+          MESSAGE=$(cat <<EOF
+🚀 <b>AWAvenue 规则自动同步通知</b>
+
+✅ 状态：发布成功
+📦 仓库：<a href="https://github.com/Iconkop/awrule">GitHub Repo</a>
+📄 规则文件：<a href="${RAW_URL}">点此查看</a>
+🕒 时间：${TIMESTAMP}
+⚙️ 触发方式：${{ github.event_name }}
+EOF
+)
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
