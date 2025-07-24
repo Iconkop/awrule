@@ -90,10 +90,16 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RAW_URL: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Clash-Classical.list
+          RAW_URL="https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list"
         run: |
           STATUS="✅ 发布成功"
-          MESSAGE="📢 [AWAvenue 规则自动同步]\n\n${STATUS}\n\n🔗 仓库: https://github.com/Iconkop/awrule\n🔗 <a href=\"${RAW_URL}\">点击这里查看完整规则文件</a>\n🕒 时间: $(date +'%Y-%m-%d %H:%M:%S')\n🔁 触发方式: ${{ github.event_name }}"
+          MESSAGE="📢 [AWAvenue 规则自动同步]\n\n${STATUS}\n\n🔗 仓库: https://MESSAGE="🚀 AWAvenue 规则自动同步通知
+
+✅ 状态：发布成功
+📦 仓库：https://github.com/Iconkop/awrule
+📄 规则文件：<a href=\"${RAW_URL}\">点此查看完整文件</a>
+🕒 时间：$(date +'%Y-%m-%d %H:%M:%S')
+⚙️ 触发方式：${{ github.event_name }}"
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id=${TELEGRAM_CHAT_ID} \
