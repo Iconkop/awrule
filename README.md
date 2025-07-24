@@ -60,6 +60,13 @@
 ! 这是注释行
 ```
 
+## 📄 规则文件地址
+
+| 类型       | 说明                    | 链接地址 |
+|------------|-------------------------|----------|
+| 原始链接   | GitHub RAW 实时内容     | [`raw.githubusercontent.com`](https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list) |
+| 加速链接   | jsDelivr CDN（国内推荐）| [`cdn.jsdelivr.net`](https://cdn.jsdelivr.net/gh/Iconkop/awrule@main/AWAvenue-Ads-Rule-Clash-Classical.list) |
+
 ---
 
 ## 🧪 本地测试方法
