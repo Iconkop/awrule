@@ -48,16 +48,12 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Force Update Flag (Manual Trigger)  # 手动运行时强制 updated=true
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "updated=true" >> $GITHUB_OUTPUT
-
       - name: Run Convert Script  # 运行转换脚本
-        if: steps.check_upstream.outputs.updated == 'true'
+        if: steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch'
         run: python scripts/convert_rule.py
 
       - name: Check for File Changes  # 检查是否有变更
-        if: steps.check_upstream.outputs.updated == 'true'
+        if: steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch'
         id: check_changes
         run: |
           if git diff --quiet; then
@@ -67,7 +63,7 @@ jobs:
           fi
 
       - name: Commit and Push Changes  # 提交变更
-        if: steps.check_upstream.outputs.updated == 'true' && steps.check_changes.outputs.changed == 'true'
+        if: (steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch') && steps.check_changes.outputs.changed == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
@@ -76,12 +72,12 @@ jobs:
           git push
 
       - name: Generate Tag  # 生成标签（北京时间）
-        if: steps.check_upstream.outputs.updated == 'true'
+        if: steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch'
         id: tag
         run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release  # 创建发布
-        if: steps.check_upstream.outputs.updated == 'true' && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
+        if: (steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch') && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
@@ -95,7 +91,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send Telegram Notification (Text)  # 发送 Telegram 文本通知（HTML 格式）
-        if: steps.check_upstream.outputs.updated == 'true' && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
+        if: (steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch') && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -116,7 +112,7 @@ jobs:
             -d parse_mode="HTML"
 
       - name: Send Telegram Notification (File)  # 发送 Telegram 文件通知
-        if: steps.check_upstream.outputs.updated == 'true' && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
+        if: (steps.check_upstream.outputs.updated == 'true' || github.event_name == 'workflow_dispatch') && (steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
