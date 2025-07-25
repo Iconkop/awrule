@@ -1,119 +1,119 @@
-name: Auto Update and Release Ad Rules  # 自动更新和发布广告规则
+name: Auto Update and Release Ad Rules
 
-permissions: contents: write
+permissions:
+  contents: write
 
-on: schedule: - cron: '0 * * * *'   # 每小时运行一次 workflow_dispatch:
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
-jobs: update: runs-on: ubuntu-latest
+jobs:
+  update:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout Code  # 检出代码
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-  - name: Set up Python  # 配置 Python 环境
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  - name: Install Dependencies  # 安装依赖包
-    run: pip install requests
+      - name: Install Dependencies
+        run: |
+          pip install requests
+          sudo apt-get update && sudo apt-get install -y jq
 
-  - name: Load Cached SHA  # 加载本地缓存 SHA
-    id: load_hash
-    run: |
-      if [ -f scripts/.last_hash ]; then
-        echo "last_sha=$(cat scripts/.last_hash)" >> $GITHUB_OUTPUT
-      else
-        echo "last_sha=" >> $GITHUB_OUTPUT
-      fi
+      - name: Check Upstream Update (Only on schedule)
+        if: github.event_name == 'schedule'
+        id: check_upstream
+        run: |
+          echo "Checking upstream commit..."
+          LAST_SHA=""
+          if [ -f scripts/.last_hash ]; then
+            LAST_SHA=$(cat scripts/.last_hash)
+          fi
 
-  - name: Check Upstream Update (Only on schedule)  # 仅在定时触发时检查上游更新
-    if: github.event_name == 'schedule'
-    id: check_upstream
-    run: |
-      echo "🔍 Checking upstream commit..."
-      LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
-      LAST_SHA="${{ steps.load_hash.outputs.last_sha }}"
+          LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
 
-      if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
-        echo "🟢 No updates detected. Exiting workflow."
-        exit 0
-      fi
+          if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
+            echo "No updates detected. Exiting workflow."
+            exit 0
+          fi
 
-      echo "$LATEST_SHA" > scripts/.last_hash
+          echo "$LATEST_SHA" > scripts/.last_hash
 
-  - name: Run Convert Script  # 运行转换脚本
-    run: python scripts/convert_rule.py
+      - name: Run Convert Script
+        run: python scripts/convert_rule.py
 
-  - name: Check for File Changes  # 检查是否有变更
-    id: check_changes
-    run: |
-      if git diff --quiet; then
-        echo "changed=false" >> $GITHUB_OUTPUT
-      else
-        echo "changed=true" >> $GITHUB_OUTPUT
-      fi
+      - name: Check for File Changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
-  - name: Commit and Push Changes  # 提交变更
-    if: steps.check_changes.outputs.changed == 'true'
-    run: |
-      git config --global user.name 'github-actions[bot]'
-      git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-      git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash
-      git commit -m "🔄 Auto update rule"
-      git push
+      - name: Commit and Push Changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash || true
+          git commit -m "Auto update rule"
+          git push
 
-  - name: Generate Tag  # 生成标签（北京时间）
-    id: tag
-    run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+      - name: Generate Tag
+        id: tag
+        run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
-  - name: Create GitHub Release  # 创建发布
-    if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-    uses: softprops/action-gh-release@v2
-    with:
-      tag_name: ${{ steps.tag.outputs.tag }}
-      name: Auto Release ${{ steps.tag.outputs.tag }}
-      body: |
-        自动同步更新源规则
-        - 来源：https://github.com/TG-Twilight/AWAvenue-Ads-Rule
-        - 时间戳：${{ steps.tag.outputs.tag }}
-      files: AWAvenue-Ads-Rule-Clash-Classical.list
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Auto Release ${{ steps.tag.outputs.tag }}
+          body: |
+            Source: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
+            Timestamp: ${{ steps.tag.outputs.tag }}
+          files: AWAvenue-Ads-Rule-Clash-Classical.list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  - name: Send Telegram Notification (Text)  # 发送 Telegram 文本通知（HTML 格式）
-    if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-    env:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-    run: |
-      RAW_URL="https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list"
-      TIMESTAMP=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')
+      - name: Send Telegram Notification (Text)
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RAW_URL="https://raw.githubusercontent.com/Iconkop/awrule/main/AWAvenue-Ads-Rule-Clash-Classical.list"
+          TIMESTAMP=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')
 
-      MESSAGE="🚀 <b>AWAvenue 规则自动同步通知</b>%0A%0A"
-      MESSAGE+="✅ 状态：发布成功%0A"
-      MESSAGE+="📦 仓库：<a href=\"https://github.com/Iconkop/awrule\">GitHub Repo</a>%0A"
-      MESSAGE+="📄 规则文件：<a href=\"${RAW_URL}\">点此查看</a>%0A"
-      MESSAGE+="🕒 时间：${TIMESTAMP}%0A"
-      MESSAGE+="⚙️ 触发方式：${{ github.event_name }}"
+          MESSAGE="🚀 <b>AWAvenue Auto Sync</b>%0A%0A"
+          MESSAGE+="✅ Status: Success%0A"
+          MESSAGE+="📦 Repo: <a href=\"https://github.com/Iconkop/awrule\">GitHub</a>%0A"
+          MESSAGE+="📄 Rule: <a href=\"${RAW_URL}\">View</a>%0A"
+          MESSAGE+="🕒 Time: ${TIMESTAMP}%0A"
+          MESSAGE+="⚙️ Trigger: ${{ github.event_name }}"
 
-      curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d chat_id="${TELEGRAM_CHAT_ID}" \
-        -d text="${MESSAGE}" \
-        -d parse_mode="HTML"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${MESSAGE}" \
+            -d parse_mode="HTML"
 
-  - name: Send Telegram Notification (File)  # 发送 Telegram 文件通知
-    if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-    env:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-    run: |
-      if [ -f AWAvenue-Ads-Rule-Clash-Classical.list ]; then
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-          -F chat_id=${TELEGRAM_CHAT_ID} \
-          -F document=@AWAvenue-Ads-Rule-Clash-Classical.list \
-          -F caption="📄 AWAvenue 转换后规则文件\n🕒 $(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')"
-      else
-        echo "规则文件不存在，跳过上传"
-      fi
-
+      - name: Send Telegram Notification (File)
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -f AWAvenue-Ads-Rule-Clash-Classical.list ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+              -F chat_id=${TELEGRAM_CHAT_ID} \
+              -F document=@AWAvenue-Ads-Rule-Clash-Classical.list \
+              -F caption="📄 AWAvenue Rule File\n🕒 $(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')"
+          else
+            echo "File not found, skip upload"
