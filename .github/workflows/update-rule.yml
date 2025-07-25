@@ -5,11 +5,43 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时自动运行
-  workflow_dispatch:      # 手动触发支持
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
-  update:
+  check_update:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      updated: ${{ steps.result.outputs.updated }}
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check upstream update
+        id: result
+        run: |
+          echo "Checking upstream..."
+          LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
+
+          mkdir -p scripts
+          if [ -f scripts/.last_hash ]; then
+            LAST_SHA=$(cat scripts/.last_hash)
+          else
+            LAST_SHA=""
+          fi
+
+          if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
+            echo "No updates."
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            echo "$LATEST_SHA" > scripts/.last_hash
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+
+  main:
+    needs: check_update
+    if: github.event_name == 'workflow_dispatch' || needs.check_update.outputs.updated == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -21,33 +53,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Dependencies
-        run: |
-          pip install requests
-          sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Load Cached SHA
-        id: load_hash
-        run: |
-          if [ -f scripts/.last_hash ]; then
-            echo "last_sha=$(cat scripts/.last_hash)" >> $GITHUB_OUTPUT
-          else
-            echo "last_sha=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check Upstream (Only on schedule)
-        if: github.event_name == 'schedule'
-        run: |
-          echo "Checking upstream commit..."
-          LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
-          LAST_SHA="${{ steps.load_hash.outputs.last_sha }}"
-
-          if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
-            echo "No updates detected. Exiting workflow."
-            exit 0
-          fi
-
-          echo "$LATEST_SHA" > scripts/.last_hash
+      - name: Install Python Dependencies
+        run: pip install requests
 
       - name: Run Convert Script
         run: python scripts/convert_rule.py
@@ -67,7 +74,7 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash
-          git commit -m "🔄 Auto update rule" || true
+          git commit -m "🔄 Auto update rule"
           git push
 
       - name: Generate Tag
