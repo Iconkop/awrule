@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # 自动运行时先检查更新
   check_update:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
@@ -39,28 +40,24 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
-  main:
+  # 自动运行：仅当有更新才运行主流程
+  auto_run:
     needs: check_update
-    if: github.event_name == 'workflow_dispatch' || needs.check_update.outputs.updated == 'true'
+    if: github.event_name == 'schedule' && needs.check_update.outputs.updated == 'true'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Python Dependencies
-        run: pip install requests
+      - run: pip install requests
 
-      - name: Run Convert Script
-        run: python scripts/convert_rule.py
+      - run: python scripts/convert_rule.py
 
-      - name: Check for File Changes
-        id: check_changes
+      - id: check_changes
         run: |
           if git diff --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -68,8 +65,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit and Push Changes
-        if: steps.check_changes.outputs.changed == 'true'
+      - if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
@@ -77,18 +73,64 @@ jobs:
           git commit -m "🔄 Auto update rule"
           git push
 
-      - name: Generate Tag
-        id: tag
+      - id: tag
         run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+      - if: steps.check_changes.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Auto Release ${{ steps.tag.outputs.tag }}
           body: |
             自动同步更新源规则
+            - 来源：https://github.com/TG-Twilight/AWAvenue-Ads-Rule
+            - 时间戳：${{ steps.tag.outputs.tag }}
+          files: AWAvenue-Ads-Rule-Clash-Classical.list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 手动运行：直接无条件执行
+  manual_run:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - run: python scripts/convert_rule.py
+
+      - id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash
+          git commit -m "🔄 Manual update rule"
+          git push
+
+      - id: tag
+        run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+
+      - uses: softprops/action-gh-release@v2
+        if: steps.check_changes.outputs.changed == 'true'
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Manual Release ${{ steps.tag.outputs.tag }}
+          body: |
+            手动同步更新源规则
             - 来源：https://github.com/TG-Twilight/AWAvenue-Ads-Rule
             - 时间戳：${{ steps.tag.outputs.tag }}
           files: AWAvenue-Ads-Rule-Clash-Classical.list
