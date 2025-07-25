@@ -1,84 +1,89 @@
 name: Auto Update and Release Ad Rules
 
-permissions: contents: write
+permissions:
+  contents: write
 
-on: schedule: - cron: '0 * * * *' workflow_dispatch:
+on:
+  schedule:
+    - cron: '0 * * * *'  # 每小时自动运行
+  workflow_dispatch:      # 手动触发支持
 
-jobs: update: runs-on: ubuntu-latest
+jobs:
+  update:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout Code
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-  - name: Set up Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  - name: Install Dependencies
-    run: |
-      pip install requests
-      sudo apt-get update && sudo apt-get install -y jq
+      - name: Install Dependencies
+        run: |
+          pip install requests
+          sudo apt-get update && sudo apt-get install -y jq
 
-  - name: Load Cached SHA
-    id: load_hash
-    run: |
-      if [ -f scripts/.last_hash ]; then
-        echo "last_sha=$(cat scripts/.last_hash)" >> $GITHUB_OUTPUT
-      else
-        echo "last_sha=" >> $GITHUB_OUTPUT
-      fi
+      - name: Load Cached SHA
+        id: load_hash
+        run: |
+          if [ -f scripts/.last_hash ]; then
+            echo "last_sha=$(cat scripts/.last_hash)" >> $GITHUB_OUTPUT
+          else
+            echo "last_sha=" >> $GITHUB_OUTPUT
+          fi
 
-  - name: Check Upstream Update (only for schedule)
-    if: github.event_name == 'schedule'
-    id: check_upstream
-    run: |
-      echo "Checking upstream commit..."
-      LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
-      LAST_SHA="${{ steps.load_hash.outputs.last_sha }}"
+      - name: Check Upstream (Only on schedule)
+        if: github.event_name == 'schedule'
+        run: |
+          echo "Checking upstream commit..."
+          LATEST_SHA=$(curl -s "https://api.github.com/repos/TG-Twilight/AWAvenue-Ads-Rule/commits?path=Filters/AWAvenue-Ads-Rule-Clash-Classical.yaml&sha=main" | jq -r '.[0].sha')
+          LAST_SHA="${{ steps.load_hash.outputs.last_sha }}"
 
-      if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
-        echo "No upstream update. Exiting workflow."
-        exit 0
-      else
-        echo "$LATEST_SHA" > scripts/.last_hash
-      fi
+          if [ "$LATEST_SHA" = "$LAST_SHA" ]; then
+            echo "No updates detected. Exiting workflow."
+            exit 0
+          fi
 
-  - name: Run Convert Script
-    run: python scripts/convert_rule.py
+          echo "$LATEST_SHA" > scripts/.last_hash
 
-  - name: Check for File Changes
-    id: check_changes
-    run: |
-      if git diff --quiet; then
-        echo "changed=false" >> $GITHUB_OUTPUT
-      else
-        echo "changed=true" >> $GITHUB_OUTPUT
-      fi
+      - name: Run Convert Script
+        run: python scripts/convert_rule.py
 
-  - name: Commit and Push Changes
-    if: steps.check_changes.outputs.changed == 'true'
-    run: |
-      git config --global user.name 'github-actions[bot]'
-      git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-      git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash || true
-      git commit -m "Auto update rule"
-      git push
+      - name: Check for File Changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
-  - name: Generate Tag
-    id: tag
-    run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+      - name: Commit and Push Changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add AWAvenue-Ads-Rule-Clash-Classical.list scripts/.last_hash
+          git commit -m "🔄 Auto update rule" || true
+          git push
 
-  - name: Create GitHub Release
-    if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-    uses: softprops/action-gh-release@v2
-    with:
-      tag_name: ${{ steps.tag.outputs.tag }}
-      name: Auto Release ${{ steps.tag.outputs.tag }}
-      body: |
-        Source: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
-        Timestamp: ${{ steps.tag.outputs.tag }}
-      files: AWAvenue-Ads-Rule-Clash-Classical.list
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate Tag
+        id: tag
+        run: echo "tag=v$(TZ=Asia/Shanghai date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
 
+      - name: Create GitHub Release
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Auto Release ${{ steps.tag.outputs.tag }}
+          body: |
+            自动同步更新源规则
+            - 来源：https://github.com/TG-Twilight/AWAvenue-Ads-Rule
+            - 时间戳：${{ steps.tag.outputs.tag }}
+          files: AWAvenue-Ads-Rule-Clash-Classical.list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
