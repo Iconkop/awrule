@@ -189,4 +189,3 @@ v2025.07.24.1030
 ## 📜 License
 
 [MIT License](LICENSE)
-```
