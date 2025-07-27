@@ -1,14 +1,14 @@
 # This file was auto-converted from Clash Classical YAML format.
 # Repository: https://github.com/Iconkop/awrule
 # Branch: main
-# Converted at: 2025-07-26 14:08:23 UTC+8
+# Converted at: 2025-07-27 13:24:17 UTC+8
 
 #Title: AWAvenue Ads Rule
 #--------------------------------------
 #Total lines: 857
 #Version: 1.6.8-release
-#Update time: 2025-07-26 21:34:29 UTC+8
-#Update content: 修正一些错误
+#Update time: 2025-07-27 20:57:46 UTC+8
+#Update content: 使用更简洁的 dnsmasq 规则格式
 
 #Homepage: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
 #License: https://github.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/LICENSE
