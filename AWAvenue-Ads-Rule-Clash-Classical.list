@@ -1,14 +1,14 @@
 # This file was auto-converted from Clash Classical YAML format.
 # Repository: https://github.com/Iconkop/awrule
 # Branch: main
-# Converted at: 2025-08-02 13:23:12 UTC+8
+# Converted at: 2025-08-03 08:11:51 UTC+8
 
 #Title: AWAvenue Ads Rule
 #--------------------------------------
-#Total lines: 871
+#Total lines: 854
 #Version: 1.6.8-release
-#Update time: 2025-08-02 20:35:40 UTC+8
-#Update content: 新增domain_suffix和domain_keyword匹配&删除singbox-regex.py
+#Update time: 2025-08-03 15:39:06 UTC+8
+#Update content: 移除重复的 regex 规则，使用更高效的keyword和suffix
 
 #Homepage: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
 #License: https://github.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/LICENSE
@@ -866,21 +866,4 @@ DOMAIN-KEYWORD,-ad.video.yximgs.com
 DOMAIN-KEYWORD,-ad.wtzw.com
 DOMAIN-KEYWORD,-be-pack-sign.pglstatp-toutiao.com
 DOMAIN-KEYWORD,-normal.zijieapi.com
-DOMAIN-REGEX,^.*.1rtb.com$
-DOMAIN-REGEX,^.*.a.market.xiaomi.com$
-DOMAIN-REGEX,^.*.ad.gameley.com$
-DOMAIN-REGEX,^.*.adintl.cn$
-DOMAIN-REGEX,^.*.adx.adwangmai.com$
-DOMAIN-REGEX,^.*.data.hicloud.com$
-DOMAIN-REGEX,^.*.log.aliyuncs.com$
-DOMAIN-REGEX,^.*.ubixioe.com$
-DOMAIN-REGEX,^.*.vlion.cn$
-DOMAIN-REGEX,^.*.yfanads.com$
-DOMAIN-REGEX,^.*.zhangyuyidong.cn$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-ad-[a-zA-Z0-9.-]*.byteimg.com$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-ad.sm.cn$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-ad.video.yximgs.com$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-ad.wtzw.com$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-be-pack-sign.pglstatp-toutiao.com$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-normal-[a-zA-Z0-9.-]*.zijieapi.com$
-DOMAIN-REGEX,^[a-zA-Z0-9.-]*-normal.zijieapi.com$
+DOMAIN-REGEX,^$
