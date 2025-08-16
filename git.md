@@ -172,6 +172,10 @@ git status
     ```bash
     git branch -D <branch-name>
     ```
+* 全局默认分支 :
+    ```bash
+    git config --global init.defaultBranch main
+    ```
 
 #### 2. 切换分支
 
