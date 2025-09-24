@@ -1,0 +1,39 @@
+name: Unpack Boot Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      boot_url:
+        description: "Boot.img 下载链接"
+        required: true
+        default: "https://example.com/boot.img"
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download magiskboot
+        run: |
+          wget -O magiskboot https://github.com/Iconkop/awrule/releases/download/v2025.09.08.1810/magiskboot
+          chmod +x magiskboot
+
+      - name: Download boot.img
+        run: |
+          wget -O boot.img "${{ github.event.inputs.boot_url }}"
+          ls -lh boot.img
+
+      - name: Unpack boot.img
+        run: |
+          mkdir unpacked
+          ./magiskboot unpack boot.img
+          mv ramdisk.cpio* kernel* dtb* unpacked/ || true
+          ls -lh unpacked
+
+      - name: Upload unpacked files
+        uses: actions/upload-artifact@v4
+        with:
+          name: unpacked-boot
+          path: unpacked
