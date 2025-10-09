@@ -1,14 +1,14 @@
 # This file was auto-converted from Clash Classical YAML format.
 # Repository: https://github.com/Iconkop/awrule
 # Branch: main
-# Converted at: 2025-10-08 20:09:50 UTC+8
+# Converted at: 2025-10-09 03:25:29 UTC+8
 
 #Title: AWAvenue Ads Rule
 #--------------------------------------
-#Total lines: 859
+#Total lines: 861
 #Version: 1.6.8-release
-#Update time: 2025-10-09 03:33:07 UTC+8
-#Update content: 添加一个广告IP #173
+#Update time: 2025-10-09 10:38:06 UTC+8
+#Update content: 新增拦截 Microsoft Edge浏览器的遥测域名 #172
 
 #Homepage: https://github.com/TG-Twilight/AWAvenue-Ads-Rule
 #License: https://github.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/LICENSE
@@ -248,6 +248,8 @@ DOMAIN,biz.weibo.com
 DOMAIN,bj.ad.track.66mobi.com
 DOMAIN,books-analytics-events.apple.com
 DOMAIN,bootpreload.uve.weibo.com
+DOMAIN,browser.events.data.msn.cn
+DOMAIN,browser.events.data.msn.com
 DOMAIN,browsercfg-drcn.cloud.dbankcloud.cn
 DOMAIN,bsrv.qq.com
 DOMAIN,bugly.qq.com
