@@ -1,0 +1,79 @@
+name: Update GeoLite2 ASN
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+      DB_URL: "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${{ secrets.MAXMIND_LICENSE_KEY }}&suffix=tar.gz"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Get latest version info (header only)
+        id: check
+        run: |
+          echo "📡 Checking latest version..."
+          HEADERS=$(curl -sI "${DB_URL}")
+          ETAG=$(echo "$HEADERS" | grep -i ETag | awk '{print $2}' | tr -d '\r"')
+          DATE=$(echo "$HEADERS" | grep -i Last-Modified | cut -d':' -f2- | xargs)
+          echo "etag=$ETAG" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "Latest ETag: $ETAG"
+          echo "Last-Modified: $DATE"
+
+      - name: Compare with last version
+        id: compare
+        run: |
+          mkdir -p .cache
+          echo "Comparing with previous etag..."
+          PREV=$(cat .cache/etag.txt 2>/dev/null || echo "none")
+          CURR="${{ steps.check.outputs.etag }}"
+          echo "Previous: $PREV"
+          echo "Current : $CURR"
+          if [ "$PREV" = "$CURR" ]; then
+            echo "no_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "no_update=false" >> $GITHUB_OUTPUT
+            echo "$CURR" > .cache/etag.txt
+          fi
+
+      - name: Stop if no new version
+        if: steps.compare.outputs.no_update == 'true'
+        run: |
+          echo "✅ No new version found, exiting."
+          exit 0
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl tar
+
+      - name: Download and extract new GeoLite2-ASN
+        run: |
+          echo "📥 Downloading new GeoLite2-ASN..."
+          curl -L -o GeoLite2-ASN.tar.gz "${DB_URL}"
+          tar -xzf GeoLite2-ASN.tar.gz
+          FILE=$(find . -name "GeoLite2-ASN.mmdb" | head -n 1)
+          mkdir -p geo
+          if [ -f "$FILE" ]; then
+            mv "$FILE" geo/GeoLite2-ASN.mmdb
+            echo "✅ Updated geo/GeoLite2-ASN.mmdb"
+          else
+            echo "❌ Not found GeoLite2-ASN.mmdb"
+            exit 1
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add geo/GeoLite2-ASN.mmdb .cache/etag.txt
+          git commit -m "update: GeoLite2-ASN.mmdb $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
