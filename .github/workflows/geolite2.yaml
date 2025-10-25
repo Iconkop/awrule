@@ -1,0 +1,73 @@
+name: Auto Update GEO Data
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 每天 UTC 0:00（北京时间早上8点）
+  workflow_dispatch:       # 手动触发支持
+
+permissions:
+  contents: write          # ✅ 允许推送更新
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+      ASN_URL: "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${{ secrets.MAXMIND_LICENSE_KEY }}&suffix=tar.gz"
+      META_BASE: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y curl tar
+
+      # 1️⃣ 下载 MetaCubeX geo 数据
+      - name: Download MetaCubeX GEO files
+        run: |
+          mkdir -p geo
+          curl -L -o geo/geoip.dat     "${META_BASE}/geoip.dat"
+          curl -L -o geo/geosite.dat   "${META_BASE}/geosite.dat"
+          curl -L -o geo/country.mmdb  "${META_BASE}/country.mmdb"
+
+      # 2️⃣ 下载并解压 MaxMind ASN
+      - name: Download GeoLite2 ASN
+        run: |
+          echo "📥 Downloading GeoLite2-ASN..."
+          curl -L -o GeoLite2-ASN.tar.gz "${ASN_URL}"
+          tar -xzf GeoLite2-ASN.tar.gz
+          FILE=$(find . -name "GeoLite2-ASN.mmdb" | head -n 1)
+          if [ -f "$FILE" ]; then
+            mv "$FILE" geo/GeoLite2-ASN.mmdb
+            echo "✅ Updated geo/GeoLite2-ASN.mmdb"
+          else
+            echo "❌ Not found GeoLite2-ASN.mmdb"
+            exit 1
+          fi
+
+      # 3️⃣ 检查是否有变化
+      - name: Check for changes
+        id: gitcheck
+        run: |
+          git add geo
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 4️⃣ 提交并推送
+      - name: Commit and push
+        if: steps.gitcheck.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "update: GEO files $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
+
+      - name: Skip if no changes
+        if: steps.gitcheck.outputs.changed == 'false'
+        run: echo "✅ No updates detected, skipping commit."
