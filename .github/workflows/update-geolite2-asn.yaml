@@ -2,8 +2,11 @@ name: Update GeoLite2 ASN
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:  # 手动触发
+    - cron: '0 0 * * *'  # 每天北京时间早上8点
+  workflow_dispatch:
+
+permissions:
+  contents: write  # ✅ 允许工作流推送到仓库
 
 jobs:
   update:
@@ -18,23 +21,21 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl tar
+
       - name: Get latest version info (header only)
         id: check
         run: |
-          echo "📡 Checking latest version..."
           HEADERS=$(curl -sI "${DB_URL}")
           ETAG=$(echo "$HEADERS" | grep -i ETag | awk '{print $2}' | tr -d '\r"')
-          DATE=$(echo "$HEADERS" | grep -i Last-Modified | cut -d':' -f2- | xargs)
           echo "etag=$ETAG" >> $GITHUB_OUTPUT
-          echo "date=$DATE" >> $GITHUB_OUTPUT
           echo "Latest ETag: $ETAG"
-          echo "Last-Modified: $DATE"
 
       - name: Compare with last version
         id: compare
         run: |
           mkdir -p .cache
-          echo "Comparing with previous etag..."
           PREV=$(cat .cache/etag.txt 2>/dev/null || echo "none")
           CURR="${{ steps.check.outputs.etag }}"
           echo "Previous: $PREV"
@@ -52,28 +53,18 @@ jobs:
           echo "✅ No new version found, exiting."
           exit 0
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y curl tar
-
       - name: Download and extract new GeoLite2-ASN
         run: |
-          echo "📥 Downloading new GeoLite2-ASN..."
           curl -L -o GeoLite2-ASN.tar.gz "${DB_URL}"
           tar -xzf GeoLite2-ASN.tar.gz
           FILE=$(find . -name "GeoLite2-ASN.mmdb" | head -n 1)
           mkdir -p geo
-          if [ -f "$FILE" ]; then
-            mv "$FILE" geo/GeoLite2-ASN.mmdb
-            echo "✅ Updated geo/GeoLite2-ASN.mmdb"
-          else
-            echo "❌ Not found GeoLite2-ASN.mmdb"
-            exit 1
-          fi
+          mv "$FILE" geo/GeoLite2-ASN.mmdb
 
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add geo/GeoLite2-ASN.mmdb .cache/etag.txt
-          git commit -m "update: GeoLite2-ASN.mmdb $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git commit -m "update: GeoLite2-ASN.mmdb $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
