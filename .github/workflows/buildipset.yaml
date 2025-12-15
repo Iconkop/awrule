@@ -1,29 +1,38 @@
 name: Cross Compile ipset for Android ARM64
 
 on:
-  workflow_dispatch:  # 手动触发工作流
+  workflow_dispatch:
     inputs:
       ipset_version:
         description: 'ipset version (e.g. v7.24)'
         required: true
         default: 'v7.24'
       ndk_version:
-        description: 'Android NDK version'
+        description: 'Android NDK version (r26b recommended)'
         required: true
-        default: '25b'
+        default: 'r26b'
+      android_api_level:
+        description: 'Android API level (34 for Android 16)'
+        required: true
+        default: '34'
 
 jobs:
   build-ipset:
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Dependencies
+      - name: Install Build Dependencies
         run: |
-          sudo apt update && sudo apt install -y git make autoconf automake libtool pkg-config
+          sudo apt update -y && sudo apt install -y git make autoconf automake libtool pkg-config wget unzip
 
-      - name: Download Android NDK
+      - name: Download & Extract Android NDK
         run: |
+          # 稳定下载链接，适配 Linux x86_64 环境
           wget https://dl.google.com/android/repository/android-ndk-${{ inputs.ndk_version }}-linux.zip -O ndk.zip
-          unzip -q ndk.zip
+          if [ $? -ne 0 ]; then
+            echo "NDK download failed, try mirror link"
+            wget https://mirror.bazel.build/dl.google.com/android/repository/android-ndk-${{ inputs.ndk_version }}-linux.zip -O ndk.zip
+          fi
+          unzip -q ndk.zip -d ./
           export NDK_PATH=$(pwd)/android-ndk-${{ inputs.ndk_version }}
           echo "NDK_PATH=$NDK_PATH" >> $GITHUB_ENV
 
@@ -31,41 +40,46 @@ jobs:
         run: |
           git clone --depth=1 --branch=${{ inputs.ipset_version }} git://git.netfilter.org/ipset.git
           cd ipset
-          ./autogen.sh  # 生成配置文件
+          ./autogen.sh || { echo "autogen.sh failed"; exit 1; }
 
-      - name: Cross Compile for ARM64
+      - name: Cross Compile ipset for ARM64
         run: |
           cd ipset
-          # 配置交叉编译环境
           export TARGET=aarch64-linux-android
           export TOOLCHAIN=$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/$TARGET21-clang
-          export CXX=$TOOLCHAIN/bin/$TARGET21-clang++
-          export AR=$TOOLCHAIN/bin/$TARGET-ar
-          export LD=$TOOLCHAIN/bin/$TARGET-ld
-          export RANLIB=$TOOLCHAIN/bin/$TARGET-ranlib
-          
+          # 匹配 NDK 工具链命名规则 + 安卓 API 级别
+          export CC=$TOOLCHAIN/bin/${TARGET}${{ inputs.android_api_level }}-clang
+          export CXX=$TOOLCHAIN/bin/${TARGET}${{ inputs.android_api_level }}-clang++
+          export AR=$TOOLCHAIN/bin/${TARGET}-ar
+          export LD=$TOOLCHAIN/bin/${TARGET}-ld
+          export RANLIB=$TOOLCHAIN/bin/${TARGET}-ranlib
+          export STRIP=$TOOLCHAIN/bin/${TARGET}-strip
+
+          # 配置编译参数，静态编译避免依赖缺失
           ./configure \
             --host=$TARGET \
             --prefix=/tmp/ipset \
             --disable-shared \
-            --enable-static
-          
-          make -j$(nproc)
+            --enable-static \
+            --disable-man-pages \
+            CFLAGS="-Os -fPIE -fPIC" \
+            LDFLAGS="-static -pie"
+
+          make -j$(nproc) || { echo "make failed"; exit 1; }
           make install DESTDIR=/tmp/ipset
 
-      - name: Package Binary File
+      - name: Package & Verify Binary
         run: |
           mkdir -p output
           cp /tmp/ipset/usr/local/bin/ipset output/
-          # 赋予执行权限
           chmod 755 output/ipset
-          # 验证架构
+          # 验证二进制架构和链接方式
+          ${{ env.NDK_PATH }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-readelf -h output/ipset | grep "Class\|Machine"
           file output/ipset
 
-      - name: Upload Artifact
+      - name: Upload Compiled Binary
         uses: actions/upload-artifact@v4
         with:
-          name: ipset-android-arm64
+          name: ipset-android-arm64-api${{ inputs.android_api_level }}
           path: output/ipset
-          retention-days: 7  # 产物保留7天
+          retention-days: 14
